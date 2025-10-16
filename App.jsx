@@ -1,22 +1,29 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import type { UserData, AIState, ChatMessage } from './types';
-import { AIState as AIStateEnum } from './types';
 import useLocalStorage from './hooks/useLocalStorage';
 import { generateResponse, resetChat } from './services/geminiService';
-import Avatar, { type AvatarHandle } from './components/Avatar';
+import Avatar from './components/Avatar';
 import { MicIcon, MicOffIcon, CameraIcon, ScreenIcon, PauseIcon, PlayIcon, SparklesIcon, DataIcon, CloseIcon, SendIcon } from './components/icons';
 
+const AIStateEnum = {
+  IDLE: 'IDLE',
+  LISTENING: 'LISTENING',
+  THINKING: 'THINKING',
+  SPEAKING: 'SPEAKING',
+  PAUSED: 'PAUSED',
+  SLEEPING: 'SLEEPING',
+};
+
 // Web Speech API interfaces
-declare global {
-  interface Window {
-    SpeechRecognition: any;
-    webkitSpeechRecognition: any;
-  }
-}
+// declare global {
+//   interface Window {
+//     SpeechRecognition: any;
+//     webkitSpeechRecognition: any;
+//   }
+// }
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-let recognition: any;
+let recognition;
 if (SpeechRecognition) {
   recognition = new SpeechRecognition();
   recognition.continuous = true;
@@ -24,31 +31,32 @@ if (SpeechRecognition) {
   recognition.lang = 'en-US';
 }
 
-const App: React.FC = () => {
-  const [userData, setUserData] = useLocalStorage<UserData | null>('userData', null);
-  const [aiState, setAiState] = useState<AIState>(AIStateEnum.IDLE);
+const App = () => {
+  const [userData, setUserData] = useLocalStorage('userData', null);
+  const [aiState, setAiState] = useState(AIStateEnum.IDLE);
   const [transcript, setTranscript] = useState('');
   const [isMuted, setIsMuted] = useState(true);
   const [isMemoryPanelOpen, setIsMemoryPanelOpen] = useState(false);
   const [isVideoPanelOpen, setIsVideoPanelOpen] = useState(false);
   const [isChatPanelOpen, setIsChatPanelOpen] = useState(false);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
-  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const chatInputRef = useRef<HTMLInputElement>(null);
+  const [mediaStream, setMediaStream] = useState(null);
+  const [currentResponse, setCurrentResponse] = useState('');
+  const videoRef = useRef(null);
+  const chatInputRef = useRef(null);
 
-  const avatarRef = useRef<AvatarHandle>(null);
+  const avatarRef = useRef(null);
   const onboardingStep = useRef(0);
-  const tempUserData = useRef<Partial<UserData>>({});
+  const tempUserData = useRef({});
 
-  const processTranscript = useCallback(async (text: string) => {
+  const processTranscript = useCallback(async (text) => {
     if (!text.trim()) return;
 
     setAiState(AIStateEnum.THINKING);
 
     // Add user message to chat
-    const userMessage: ChatMessage = { role: 'user', content: text, timestamp: new Date() };
+    const userMessage = { role: 'user', content: text, timestamp: new Date() };
     setChatMessages(prev => [...prev, userMessage]);
 
     if (!userData) {
@@ -73,13 +81,14 @@ const App: React.FC = () => {
             case 3: // Ask for recent work & complete
                 response = `Thanks for sharing! I'll remember that. It was great getting to know you. How can I help you today?`;
                 tempUserData.current.dailyNotes = [text];
-                setUserData(tempUserData.current as UserData);
+                setUserData(tempUserData.current);
                 onboardingStep.current = 4; // Done
                 break;
         }
         speak(response);
+        setCurrentResponse(response);
         // Add AI response to chat
-        const aiMessage: ChatMessage = { role: 'assistant', content: response, timestamp: new Date() };
+        const aiMessage = { role: 'assistant', content: response, timestamp: new Date() };
         setChatMessages(prev => [...prev, aiMessage]);
     } else {
         // Regular conversation
@@ -89,13 +98,14 @@ const App: React.FC = () => {
            setUserData(updatedUserData);
         }
         speak(response);
+        setCurrentResponse(response);
         // Add AI response to chat
-        const aiMessage: ChatMessage = { role: 'assistant', content: response, timestamp: new Date() };
+        const aiMessage = { role: 'assistant', content: response, timestamp: new Date() };
         setChatMessages(prev => [...prev, aiMessage]);
     }
   }, [userData, setUserData]);
 
-  const speak = (text: string) => {
+  const speak = (text) => {
     if (!window.speechSynthesis) return;
     setAiState(AIStateEnum.SPEAKING);
     const utterance = new SpeechSynthesisUtterance(text);
@@ -143,7 +153,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!recognition) return;
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event) => {
       let finalTranscript = '';
       let interimTranscript = '';
       for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -167,7 +177,7 @@ const App: React.FC = () => {
            startListening();
         }
     };
-    
+
     return () => {
         recognition.onresult = null;
         recognition.onend = null;
@@ -228,7 +238,7 @@ const App: React.FC = () => {
     await processTranscript(text);
   };
 
-  const handleChatKeyPress = (e: React.KeyboardEvent) => {
+  const handleChatKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
@@ -245,10 +255,10 @@ const App: React.FC = () => {
       linkElement.click();
   }
   
-  const startMedia = async (type: 'camera' | 'screen') => {
+  const startMedia = async (type) => {
     try {
-        const stream = type === 'camera' 
-            ? await navigator.mediaDevices.getUserMedia({ video: true, audio: false }) 
+        const stream = type === 'camera'
+            ? await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
             : await navigator.mediaDevices.getDisplayMedia({ video: true });
         setMediaStream(stream);
         setIsVideoPanelOpen(true);
@@ -278,6 +288,16 @@ const App: React.FC = () => {
       <div className="absolute inset-0 w-full h-full">
         <Avatar ref={avatarRef} aiState={aiState} />
       </div>
+
+      <div className="absolute top-4 left-4 z-10">
+        <img src="/Picsart_25-10-06_14-25-42-374.png" alt="Logo" className="w-12 h-12 rounded-full" />
+      </div>
+
+      {currentResponse && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
+          <h4 className="text-white text-xl font-bold text-center">{currentResponse}</h4>
+        </div>
+      )}
 
       <div className="absolute top-4 right-4 flex gap-2 z-10">
         <button onClick={() => setIsChatPanelOpen(true)} className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">

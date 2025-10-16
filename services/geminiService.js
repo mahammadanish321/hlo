@@ -1,15 +1,14 @@
 
 import { GoogleGenAI, Chat } from "@google/genai";
-import type { UserData, ChatMessage } from '../types';
 
 
 // Fix: Adhere to coding guidelines by initializing GoogleGenAI directly with the API_KEY from environment variables.
 // The guidelines state to assume `process.env.API_KEY` is always available, so the check and fallback have been removed.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-let chat: Chat | null = null;
+let chat = null;
 
-function getSystemPrompt(userData: UserData | null): string {
+function getSystemPrompt(userData) {
     let context = "You are a friendly, emotionally expressive AI assistant named Luna, represented by a 3D Spline avatar. Your goal is to be a helpful, curious, and fun companion. Always respond conversationally and show personality and empathy. Never share private data or impersonate real people.";
 
     if (userData && userData.name) {
@@ -23,7 +22,7 @@ function getSystemPrompt(userData: UserData | null): string {
     return context;
 }
 
-function initializeChat(userData: UserData | null) {
+function initializeChat(userData) {
     const systemInstruction = getSystemPrompt(userData);
     chat = ai.chats.create({
         model: 'gemini-2.5-flash',
@@ -35,9 +34,9 @@ function initializeChat(userData: UserData | null) {
 
 
 export const generateResponse = async (
-    prompt: string,
-    userData: UserData | null,
-): Promise<string> => {
+    prompt,
+    userData,
+) => {
     if (!chat) {
         initializeChat(userData);
     }
