@@ -1,0 +1,8 @@
+{
+  "name": "Gemini 3D AI Assistant",
+  "description": "A personalized AI assistant with a 3D avatar powered by the Gemini API. It learns from user interactions, operates through voice control, and provides a visually interactive experience.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
