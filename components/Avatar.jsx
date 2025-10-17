@@ -74,7 +74,13 @@ const Avatar = forwardRef(({ aiState }, ref) => {
 
   return (
     <div className="absolute inset-0 w-full h-full">
-      <spline-viewer url="https://prod.spline.design/9LK6Gwpl6dlCY-Jr/scene.splinecode"></spline-viewer>
+      <iframe
+        src="https://my.spline.design/untitled-20f3b9c9c83d43d49a6b2595b3b0e9a3/"
+        frameBorder="0"
+        width="100%"
+        height="100%"
+        allowFullScreen
+      ></iframe>
     </div>
   );
 });
