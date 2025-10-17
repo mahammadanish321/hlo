@@ -295,7 +295,7 @@ const App = () => {
 
       {currentResponse && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
-          <h4 className="text-white text-xl font-bold text-center">{currentResponse}</h4>
+          <h6 className="text-white text-xl font-bold text-center">{currentResponse}</h6>
         </div>
       )}
 
